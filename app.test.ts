@@ -4,8 +4,8 @@ import { createApp } from './app.ts';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Duplex } from 'node:stream';
 
-async function fixture(t: any, token = 'test-token') {
-  const server = createApp({ token, owner: 'alice' });
+async function fixture(t: any, token = 'test-token', ownerOptions: { owner?: string } = { owner: 'alice' }) {
+  const server = createApp({ token, ...ownerOptions });
   return async (path: string, method = 'GET', body?: unknown, authorization: string | null = 'Bearer test-token') => {
     const output: Buffer[] = [];
     const socket = new Duplex({ read() {}, write(chunk, encoding, callback) { output.push(Buffer.from(chunk)); callback(); } });
@@ -36,6 +36,28 @@ async function fixture(t: any, token = 'test-token') {
     return { status: res.statusCode, data };
   };
 }
+
+test('default owner repository is readable through /user/repos', async t => {
+  const previousOwner = process.env.MAKEFUN_SHOP_OWNER;
+  let call: Awaited<ReturnType<typeof fixture>>;
+  try {
+    delete process.env.MAKEFUN_SHOP_OWNER;
+    call = await fixture(t, 'test-token', {});
+  } finally {
+    if (previousOwner === undefined) delete process.env.MAKEFUN_SHOP_OWNER;
+    else process.env.MAKEFUN_SHOP_OWNER = previousOwner;
+  }
+  const created = await call('/api/v3/user/repos', 'POST', { name: 'default-owner' });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.owner.login, 'adaiversen');
+  assert.equal(created.data.full_name, 'adaiversen/default-owner');
+  const listed = await call('/api/v3/user/repos');
+  assert.equal(listed.status, 200);
+  assert.deepEqual(listed.data, [created.data]);
+  const read = await call('/api/v3/repos/adaiversen/default-owner');
+  assert.equal(read.status, 200);
+  assert.deepEqual(read.data, created.data);
+});
 
 test('bearer auth fails closed and covers reads and writes', async t => {
   const call = await fixture(t);

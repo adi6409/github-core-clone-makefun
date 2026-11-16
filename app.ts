@@ -53,7 +53,7 @@ function page(items: Data[], url: URL): Data[] {
 /** One store per application process/server; no request can borrow another owner's repository. */
 export function createApp(options: { token?: string; owner?: string } = {}) {
   const token = options.token ?? process.env.MAKEFUN_SHOP_TOKEN ?? '';
-  const owner = options.owner ?? process.env.MAKEFUN_SHOP_OWNER ?? 'makefun';
+  const owner = options.owner ?? process.env.MAKEFUN_SHOP_OWNER ?? 'adaiversen';
   const repos = new Map<string, Repository>();
   let nextId = 1;
   const key = (login: string, name: string) => `${login.toLowerCase()}/${name.toLowerCase()}`;
